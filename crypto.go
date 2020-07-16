@@ -127,6 +127,9 @@ func (e *Cipher) Decrypt(key, cipherTxt []byte) ([]byte, error) {
 		return nil, errors.New("invalid cipher type")
 	}
 
+	iv := cipherTxt[:block.BlockSize()]
+	cipherTxt = cipherTxt[block.BlockSize():]
+
 	if len(cipherTxt) < block.BlockSize() {
 		return nil, errors.New("ciphertext too short")
 	}
@@ -134,9 +137,6 @@ func (e *Cipher) Decrypt(key, cipherTxt []byte) ([]byte, error) {
 	if len(cipherTxt)%block.BlockSize() != 0 {
 		return nil, errors.New("gocrypto/cipher: input not full blocks")
 	}
-
-	iv := cipherTxt[:block.BlockSize()]
-	cipherTxt = cipherTxt[block.BlockSize():]
 
 	var blockMode cipher.BlockMode
 	switch e.BlockMode {
