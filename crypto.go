@@ -44,13 +44,16 @@ type Cipher struct {
 	Padding   string
 }
 
-func NewCipher(transformation string) Cipher {
+func NewCipher(transformation string) (e Cipher) {
 	fields := strings.Split(transformation, "/")
-	e := Cipher{
-		Cipher:    fields[0],
-		BlockMode: fields[1],
-		Padding:   fields[2],
+	if len(fields) >= 3 {
+		e = Cipher{
+			Cipher:    fields[0],
+			BlockMode: fields[1],
+			Padding:   fields[2],
+		}
 	}
+
 	return e
 }
 
