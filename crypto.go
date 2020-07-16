@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/des"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"io"
 	"strings"
@@ -102,7 +103,15 @@ func (e *Cipher) Encrypt(key, plainTxt []byte) ([]byte, error) {
 	return dst, nil
 }
 
+func (e *Cipher) DecryptWithIV(key, iv, cipherTxt []byte) ([]byte, error) {
+	return e.decrypt(key, iv, cipherTxt)
+}
+
 func (e *Cipher) Decrypt(key, cipherTxt []byte) ([]byte, error) {
+	return e.decrypt(key, nil, cipherTxt)
+}
+
+func (e *Cipher) decrypt(key, iv, cipherTxt []byte) ([]byte, error) {
 	var block cipher.Block
 	var err error
 
@@ -127,8 +136,17 @@ func (e *Cipher) Decrypt(key, cipherTxt []byte) ([]byte, error) {
 		return nil, errors.New("invalid cipher type")
 	}
 
-	iv := cipherTxt[:block.BlockSize()]
-	cipherTxt = cipherTxt[block.BlockSize():]
+	n, err := base64.StdEncoding.Decode(cipherTxt, cipherTxt)
+	if err != nil {
+		return nil, err
+	}
+
+	cipherTxt = cipherTxt[:n]
+
+	if iv == nil {
+		iv = cipherTxt[:block.BlockSize()]
+		cipherTxt = cipherTxt[block.BlockSize():]
+	}
 
 	if len(cipherTxt) < block.BlockSize() {
 		return nil, errors.New("ciphertext too short")

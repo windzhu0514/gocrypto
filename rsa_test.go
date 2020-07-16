@@ -1,13 +1,13 @@
 package gocrypto
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"gocrypto/rand"
-	"gocrypto/rsa"
-	"gocrypto/x509"
 	"testing"
 )
 
