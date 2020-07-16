@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/des"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"io"
 	"strings"
@@ -135,13 +134,6 @@ func (e *Cipher) decrypt(key, iv, cipherTxt []byte) ([]byte, error) {
 	default:
 		return nil, errors.New("invalid cipher type")
 	}
-
-	n, err := base64.StdEncoding.Decode(cipherTxt, cipherTxt)
-	if err != nil {
-		return nil, err
-	}
-
-	cipherTxt = cipherTxt[:n]
 
 	if iv == nil {
 		iv = cipherTxt[:block.BlockSize()]
