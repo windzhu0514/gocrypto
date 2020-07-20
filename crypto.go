@@ -92,13 +92,23 @@ func (e *Cipher) Encrypt(key, plainTxt []byte) ([]byte, error) {
 	switch e.BlockMode {
 	case "CBC":
 		blockMode = cipher.NewCBCEncrypter(block, iv)
+		blockMode.CryptBlocks(dst[block.BlockSize():], plainTxt)
 	case "ECB":
 		blockMode = ecb.NewECBEncrypter(block)
+		blockMode.CryptBlocks(dst[block.BlockSize():], plainTxt)
+	case "CFB":
+		stream := cipher.NewCFBEncrypter(block, iv)
+		stream.XORKeyStream(dst[block.BlockSize():], plainTxt)
+	case "CTR":
+		stream := cipher.NewCTR(block, iv)
+		stream.XORKeyStream(dst[block.BlockSize():], plainTxt)
+	case "OFB":
+		stream := cipher.NewOFB(block, iv)
+		stream.XORKeyStream(dst[block.BlockSize():], plainTxt)
 	default:
 		return nil, errors.New("invalid block mode type")
 	}
 
-	blockMode.CryptBlocks(dst, plainTxt)
 	return dst, nil
 }
 
@@ -148,18 +158,28 @@ func (e *Cipher) decrypt(key, iv, cipherTxt []byte) ([]byte, error) {
 		return nil, errors.New("gocrypto/cipher: input not full blocks")
 	}
 
+	dst := make([]byte, len(cipherTxt))
 	var blockMode cipher.BlockMode
+
 	switch e.BlockMode {
 	case "CBC":
 		blockMode = cipher.NewCBCDecrypter(block, iv)
+		blockMode.CryptBlocks(dst, cipherTxt)
 	case "ECB":
 		blockMode = ecb.NewECBDecrypter(block)
+		blockMode.CryptBlocks(dst, cipherTxt)
+	case "CFB":
+		stream := cipher.NewCFBDecrypter(block, iv)
+		stream.XORKeyStream(dst, cipherTxt)
+	case "CTR":
+		stream := cipher.NewCTR(block, iv)
+		stream.XORKeyStream(dst, cipherTxt)
+	case "OFB":
+		stream := cipher.NewOFB(block, iv)
+		stream.XORKeyStream(dst, cipherTxt)
 	default:
 		return nil, errors.New("invalid block mode type")
 	}
-
-	dst := make([]byte, len(cipherTxt))
-	blockMode.CryptBlocks(dst, cipherTxt)
 
 	switch e.Padding {
 	case "PKCS5Padding", "PKCS7Padding":
@@ -171,4 +191,44 @@ func (e *Cipher) decrypt(key, iv, cipherTxt []byte) ([]byte, error) {
 	}
 
 	return dst, nil
+}
+
+func AESGCMEncrypter(key, plainTxt, additionalData []byte) ([]byte, []byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nonce := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, nil, err
+	}
+
+	ciphertext := aesgcm.Seal(nil, nonce, plainTxt, additionalData)
+
+	return nonce, ciphertext, nil
+}
+
+func AESGCMDecrypter(key, nonce, cipherTxt, additionalData []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	plainTxt, err := aesgcm.Open(nil, nonce, cipherTxt, additionalData)
+	if err != nil {
+		return nil, err
+	}
+
+	return plainTxt, nil
 }
