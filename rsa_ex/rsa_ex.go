@@ -1,4 +1,4 @@
-package rsa_ex
+package rsa_ext
 
 import (
 	"crypto/rand"
@@ -38,8 +38,10 @@ func PrivateKeyEncrypt(rand io.Reader, priv *rsa.PrivateKey, hashed []byte) ([]b
 }
 
 // copy form gocrypto/rsa/rsa.go
-var bigZero = big.NewInt(0)
-var bigOne = big.NewInt(1)
+var (
+	bigZero = big.NewInt(0)
+	bigOne  = big.NewInt(1)
+)
 
 // copy form gocrypto/rsa/rsa.go
 func modInverse(a, n *big.Int) (ia *big.Int, ok bool) {
@@ -148,7 +150,7 @@ func PublicKeyDecrypt(pub *rsa.PublicKey, data []byte) ([]byte, error) {
 	if d[1] != 0 && d[1] != 1 {
 		return nil, ErrKeyPairDismatch
 	}
-	var i = 2
+	i := 2
 	for ; i < len(d); i++ {
 		if d[i] == 0 {
 			break

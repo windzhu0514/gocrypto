@@ -1,105 +1,92 @@
 package gocrypto
 
 import (
-	"crypto/cipher"
+	"crypto/aes"
 	"crypto/des"
-	"crypto/rand"
-	"errors"
-	"io"
 )
 
-// des加密
-func DesEncrypt(plainTxt, key []byte, padding Padding) ([]byte, error) {
-	block, err := des.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	if padding != nil {
-		plainTxt = padding.Padding(plainTxt, block.BlockSize())
-	}
-
-	// origData = ZeroPadding(origData, block.BlockSize())
-	blockMode := cipher.NewCBCEncrypter(block, key)
-	crypted := make([]byte, len(plainTxt))
-	// 根据CryptBlocks方法的说明，如下方式初始化crypted也可以
-	// crypted := origData
-	blockMode.CryptBlocks(crypted, plainTxt)
-	return crypted, nil
+type DESCipher struct {
+	key []byte
+	cipherConfig
 }
 
-// des解密
-func DesDecrypt(cipherTxt, key []byte, padding Padding) ([]byte, error) {
-	block, err := des.NewCipher(key)
-	if err != nil {
-		return nil, err
+func NewDES(key []byte, opts ...Option) Cipher {
+	c := &DESCipher{
+		key: key,
 	}
 
-	if len(cipherTxt)%block.BlockSize() != 0 {
-		return nil, errors.New("gocrypto/cipher: input not full blocks")
+	for _, opt := range opts {
+		opt(&c.cipherConfig)
 	}
 
-	blockMode := cipher.NewCBCDecrypter(block, key)
-
-	dst := make([]byte, len(cipherTxt))
-	blockMode.CryptBlocks(dst, cipherTxt)
-
-	if padding != nil {
-		dst = padding.UnPadding(dst)
+	if c.PaddingMode == nil {
+		c.PaddingMode = PKCS7Padding
 	}
 
-	return dst, nil
+	if c.BlockMode == nil {
+		c.BlockMode = CBC
+	}
+
+	return c
 }
 
-func TripleCBCEncrypt(plainTxt, key []byte, padding Padding) ([]byte, error) {
-	block, err := des.NewTripleDESCipher(key)
+func (c *DESCipher) Encrypt(plainTxt []byte) ([]byte, error) {
+	block, err := aes.NewCipher(c.key)
 	if err != nil {
 		return nil, err
 	}
 
-	if padding != nil {
-		plainTxt = padding.Padding(plainTxt, block.BlockSize())
-	}
-
-	// The IV needs to be unique, but not secure. Therefore it's common to
-	// include it at the beginning of the ciphertext.
-	dst := make([]byte, block.BlockSize()+len(plainTxt))
-	iv := dst[:block.BlockSize()]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, err
-	}
-
-	blockMode := cipher.NewCBCEncrypter(block, iv)
-	blockMode.CryptBlocks(dst, plainTxt)
-
-	return dst, nil
+	return c.BlockMode.Encrypt(&c.cipherConfig, block, plainTxt)
 }
 
-func TripleCBCDecrypt(cipherTxt, key []byte, padding Padding) ([]byte, error) {
-	block, err := des.NewTripleDESCipher(key)
+func (c *DESCipher) Decrypt(cipherTxt []byte) ([]byte, error) {
+	block, err := aes.NewCipher(c.key)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(cipherTxt) < block.BlockSize() {
-		return nil, errors.New("ciphertext too short")
+	return c.BlockMode.Decrypt(&c.cipherConfig, block, cipherTxt)
+}
+
+type TripleDESCipher struct {
+	key []byte
+	cipherConfig
+}
+
+func NewTripleDES(key []byte, opts ...Option) Cipher {
+	c := &TripleDESCipher{
+		key: key,
 	}
 
-	if len(cipherTxt)%block.BlockSize() != 0 {
-		return nil, errors.New("gocrypto/cipher: input not full blocks")
+	for _, opt := range opts {
+		opt(&c.cipherConfig)
 	}
 
-	iv := cipherTxt[:block.BlockSize()]
-	cipherTxt = cipherTxt[block.BlockSize():]
-
-	blockMode := cipher.NewCBCDecrypter(block, iv)
-
-	dst := make([]byte, len(cipherTxt))
-	blockMode.CryptBlocks(dst, cipherTxt)
-
-	if padding != nil {
-		dst = padding.UnPadding(dst)
+	if c.PaddingMode == nil {
+		c.PaddingMode = PKCS7Padding
 	}
 
-	return dst, nil
+	if c.BlockMode == nil {
+		c.BlockMode = CBC
+	}
+
+	return c
+}
+
+func (c *TripleDESCipher) Encrypt(plainTxt []byte) ([]byte, error) {
+	block, err := des.NewTripleDESCipher(c.key)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.BlockMode.Encrypt(&c.cipherConfig, block, plainTxt)
+}
+
+func (c *TripleDESCipher) Decrypt(cipherTxt []byte) ([]byte, error) {
+	block, err := des.NewTripleDESCipher(c.key)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.BlockMode.Decrypt(&c.cipherConfig, block, cipherTxt)
 }
